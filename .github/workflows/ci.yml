@@ -1,0 +1,48 @@
+name: CI for Student Submissions
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+    # Добавьте эту секцию для работы с форками 
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+
+# Добавьте эти permissions
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Важно: использовать токен основного репозитория
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build and analysis
+        run: |
+          dotnet build --no-restore -warnaserror -p:TreatWarningsAsErrors=true
+
+      - name: Run tests
+        run: dotnet test --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
